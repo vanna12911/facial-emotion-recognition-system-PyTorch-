@@ -4,6 +4,7 @@ import numpy as np
 from model import *
 from dataset import *
 import matplotlib.pyplot as plt
+import tqdm
 
 def train_model(model, trainloader, validloader, epochs=100, visualize_learning_curve=True):
     criterion = nn.NLLLoss()
@@ -15,8 +16,8 @@ def train_model(model, trainloader, validloader, epochs=100, visualize_learning_
         running_loss = 0
         tr_accuracy = 0
         for images, labels in trainloader:
-            images = images.cpu()
-            labels = labels.long().cpu()
+            images = images.cuda()
+            labels = labels.long().cuda()
             optimizer.zero_grad()
             
             log_ps  = model(images)
@@ -36,9 +37,12 @@ def train_model(model, trainloader, validloader, epochs=100, visualize_learning_
         accuracy = 0
         with torch.no_grad():
             model.eval()
+
+            progress_bar = tqdm(trainloader, desc=f"Epoch {e+1}/{epochs}", unit="batch")
+
             for images, labels in validloader:
-                images = images.cpu()
-                labels = labels.long().cpu()
+                images = images.cuda()
+                labels = labels.long().cuda()
                 log_ps = model(images)
                 test_loss += criterion(log_ps, labels).item()
                 
@@ -47,7 +51,9 @@ def train_model(model, trainloader, validloader, epochs=100, visualize_learning_
                 equals = top_class == labels.view(*top_class.shape)
                 # accuracy += torch.mean(equals.type(torch.FloatTensor))
                 accuracy += torch.mean(equals.type(torch.FloatTensor).cuda())
-        
+
+            progress_bar = tqdm(trainloader, desc=f"Epoch {e+1}/{epochs}", unit="batch")
+
         train_losses.append(running_loss/len(trainloader))
         test_losses.append(test_loss/len(validloader))
 
@@ -81,11 +87,11 @@ def main():
     print('Data Preprocessed and got DataLoaders...')
 
     model = Face_Emotion_CNN()
-    # if torch.cuda.is_available():
-        # model.cuda()
-        # print('GPU Found!!!, Moving Model to CUDA.')
-    # else:
-    model.cpu()
+    if torch.cuda.is_available():
+        model.cuda()
+        print('GPU Found!!!, Moving Model to CUDA.')
+    else:
+        model.cpu()
 
     print('GPU not found!!, using model with CPU.')
 
